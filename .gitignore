@@ -18,4 +18,13 @@ gradle-app.setting
 # Eclipse Core
 .project
 # JDT-specific (Eclipse Java Development Tools)
-.classpath
+classpath
+
+backup
+.idea
+**/.settings
+**/.classpath
+**/android.keystore
+**/.project
+**/gradle.properties
+!gradle.properties
