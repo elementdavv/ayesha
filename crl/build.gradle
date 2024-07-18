@@ -1,0 +1,21 @@
+apply plugin: 'com.android.library'
+
+group = 'net.timelegend.ayesha'
+version = '1.0'
+
+dependencies {
+}
+
+android {
+    compileSdkVersion 34
+    defaultConfig {
+        namespace 'net.timelegend.crl'
+        minSdkVersion 21
+        targetSdkVersion 34
+    }
+
+    // compileOptions {
+    //     sourceCompatibility JavaVersion.VERSION_1_8
+    //     targetCompatibility JavaVersion.VERSION_1_8
+    // }
+}

@@ -1,0 +1,10 @@
+var info = {};
+var meta = window.manifest?.metadata;
+if (meta?.title) info.Title = meta.title;
+if (meta?.author) info.Author = meta.author;
+if (meta?.publisher) info.Publisher = meta.publisher;
+if (meta?.publicationDate) info.PublicationDate = meta.publicationDate;
+info.Producer = 'Element Davv';
+info.Creator = 'Timelegend';
+info.Created = new Date();
+return info;

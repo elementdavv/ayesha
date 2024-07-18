@@ -22,9 +22,8 @@ classpath
 
 backup
 .idea
+app/android.keystore
+app/gradle.properties
 **/.settings
 **/.classpath
-**/android.keystore
 **/.project
-**/gradle.properties
-!gradle.properties
