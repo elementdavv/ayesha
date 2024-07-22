@@ -67,6 +67,8 @@ public class PDFWriterDemo {
 
         byte[] src = readAllBytes(c, "book.jpg");
         mPDFWriter.newImagePage(2, src);
+        mPDFWriter.setOpaque(0.0);
+        mPDFWriter.addText(150, 150, 14, "http://coderesearchlabs.com");
 
         byte[] cri = readAllBytes(c, "crisis.png");
         mPDFWriter.newImagePage(6, cri);

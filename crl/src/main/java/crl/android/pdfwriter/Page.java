@@ -7,7 +7,13 @@
 
 package crl.android.pdfwriter;
 
+import android.util.Pair;
+
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.Map;
 
 public class Page {
 
@@ -16,14 +22,15 @@ public class Page {
 	private ArrayList<IndirectObject> mPageFonts;
 	private ArrayList<XObjectImage> mXObjects;
 	private IndirectObject mPageContents;
+    private Map<String, IndirectObject> mGstates;
 	private Array mMediaBox;
 	
 	public Page(PDFDocument document) {
 		mDocument = document;
+        mGstates = new HashMap<>();
 		mIndirectObject = mDocument.newIndirectObject();
 		mPageFonts = new ArrayList<IndirectObject>();
 		mXObjects = new ArrayList<XObjectImage>();
-		setFont(StandardFonts.SUBTYPE, StandardFonts.TIMES_ROMAN, StandardFonts.WIN_ANSI_ENCODING);
 		mPageContents = mDocument.newIndirectObject();
 		mDocument.includeIndirectObject(mPageContents);
 	}
@@ -64,6 +71,25 @@ public class Page {
 		return result;
 	}
 	
+    private String getExtGStateReference() {
+		String result = "";
+
+        if (!mGstates.isEmpty()) {
+            result = "    /ExtGState <<\n";
+            Set<String> keySet = mGstates.keySet();
+            Iterator<String> it = keySet.iterator();
+
+            while (it.hasNext()) {
+                String key = it.next();
+                result += "      /" + key + " " + mGstates.get(key).getIndirectReference() + "\n";
+            }
+
+            result += "    >>\n";
+        }
+
+        return result;
+    }
+
 	public void render(String pagesIndirectReference) {
 		String streamContent = mPageContents.getStreamContent();
 		mPageContents.setDictionaryContent("  /Length " + streamContent.length() + "\n");
@@ -71,7 +97,7 @@ public class Page {
 		mIndirectObject.setDictionaryContent(
 			"  /Type /Page\n  /Parent " + pagesIndirectReference + "\n" +
 			(mMediaBox != null ? "  /MediaBox " + mMediaBox.toPDFString() + "\n" : "") +
-			"  /Resources <<\n" + getFontReferences() + getXObjectReferences() + "  >>\n" +
+			"  /Resources <<\n" + getFontReferences() + getXObjectReferences() + getExtGStateReference() + "  >>\n" +
 			"  /Contents " + mPageContents.getIndirectReference() + "\n"
 		);
 	}
@@ -90,6 +116,23 @@ public class Page {
 		mPageFonts.add(lFont);
 	}
 	
+    private void setFontAsNeeded() {
+		if (mPageFonts.isEmpty()) {
+		    setFont(StandardFonts.SUBTYPE, StandardFonts.HELVETICA, StandardFonts.WIN_ANSI_ENCODING);
+        }
+    }
+
+    // 0.0: invisible
+    public void setOpaque(Double opaque) {
+        Pair<String, IndirectObject> gs = Gstate.setOpaque(mDocument, opaque);
+
+        if (!mGstates.containsKey(gs.first)) {
+            mGstates.put(gs.first, gs.second);
+        }
+
+        addContent("/" + gs.first + " gs\n");
+    }
+
 	private void addContent(String content) {
 		mPageContents.addStreamContent(content);
 	}
@@ -103,6 +146,7 @@ public class Page {
 	}
 	
 	public void addText(int leftPosition, int topPositionFromBottom, int fontSize, String text, String transformation) {
+        setFontAsNeeded();
 		addContent(
 			"BT\n" +
 			transformation + " " + leftPosition + " " + topPositionFromBottom + " Tm\n" +
@@ -117,6 +161,7 @@ public class Page {
 	}
 	
 	public void addTextAsHex(int leftPosition, int topPositionFromBottom, int fontSize, String hex, String transformation) {
+        setFontAsNeeded();
 		addContent(
 			"BT\n" +
 			transformation + " " + leftPosition + " " + topPositionFromBottom + " Tm\n" +

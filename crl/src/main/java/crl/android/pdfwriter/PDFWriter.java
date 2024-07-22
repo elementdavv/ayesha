@@ -35,6 +35,7 @@ public class PDFWriter {
 	public PDFWriter(OutputStream os, Map<String, String> info, int pageWidth, int pageHeight) throws IOException {
         this.os = os;
         this.mInfo = info;
+        // DO NOT CHANGE THIS CALLING ORDER
 		mDocument = new PDFDocument(os);
 		mCatalog = mDocument.newIndirectObject();
 		mDocument.includeIndirectObject(mCatalog);
@@ -74,6 +75,10 @@ public class PDFWriter {
         flush();
         mDocument.end();
         this.os = null;
+    }
+
+    public void setOpaque(Double opaque) {
+        mCurrentPage.setOpaque(opaque);
     }
 
 	public int getPageCount() {
