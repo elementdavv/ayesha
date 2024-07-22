@@ -9,6 +9,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class Coordinator {
+    public final static Integer PERMISSION_REQUEST_CODE_JOB = 1;
+    public final static Integer PERMISSION_REQUEST_CODE_DIRECT = 2;
+
     public final static String archive = "https://archive.org/";
     public final static String archiveDetail = "https://archive.org/details/";
     public final static String archiveLoan = "https://archive.org/services/loans/loan";
@@ -33,18 +36,13 @@ public class Coordinator {
         return idMap.keySet();
     }
 
-    // from add panel
+    // from site list
     public static MyWebView newView(Integer site) {
         Pair<String, String> pair = idMap.get(site);
         return newView(pair.first, null);
     }
 
-    // from restore
-    public static MyWebView newView(String url) {
-        return newView(url, null);
-    }
-
-    // from context menu, and others
+    // from restore, context menu, clipboard
     public static MyWebView newView(String url, MyWebView creator) {
         MyWebView myView = new MyWebView(context, creator);
 
@@ -62,7 +60,7 @@ public class Coordinator {
         return myView;
     }
 
-    // from clipboard needs check
+    // from clipboard, needs check
     public static MyWebView newViewCheck(String url) {
         if (url != null) {
             Pair<String, String> pair = idMap.entrySet().stream()

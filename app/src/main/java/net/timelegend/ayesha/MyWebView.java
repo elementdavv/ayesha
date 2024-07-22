@@ -27,6 +27,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ContentLoadingProgressBar;
 
@@ -47,6 +48,8 @@ public class MyWebView extends WebView {
     protected boolean downloading;
     protected int percent;
     protected int progress;
+    protected DownloadManager dm;
+    protected DownloadManager.Request rq;
 
     public MyWebView(Context context, MyWebView creator) {
         super(context);
@@ -57,13 +60,17 @@ public class MyWebView extends WebView {
         downloading = false;
         percent = 0;
         progress = 0;
+        dm = null;
+        rq = null;
+
         RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams
                 (ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+
         setLayoutParams(params);
         setWebViewClient(new MyWebViewClient());
         setWebChromeClient(new MyWebChromeClient());
         setDownloadListener(new MyDownloadListener());
-        setOnLongClickListener(new MyWebLongClickListener());
+        setOnLongClickListener(new MyOnLongClickListener());
         setupView();
     }
 
@@ -86,21 +93,23 @@ public class MyWebView extends WebView {
     class MyWebViewClient extends WebViewClient {
         @Override
         public void onPageStarted(WebView v, String url, Bitmap favicon) {
-            Log.i("enter " + " " + url);
+            Log.i("start " + url);
             initJsInterface(url);
             super.onPageStarted(v, url, favicon);
         }
 
+        /*
+         * return true to cancel the loading
+         */
         @Override
         public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
-            Log.i("redirect " + req.getUrl().toString());
+            Log.i("override " + req.getUrl().toString());
             return false;
         }
 
         /*
-         * hathiturst.org may change to use Let's Encrypt SSL certificates for https support now(2024).
-         * It is not trusted by WebView in Android 7.0(api 24) and below since Sept 1st, 2021.
-         * Here we ignore it and proceed.
+         * hathiturst use Let's Encrypt certificates
+         * for api < 24(android 7.0), ignore and proceed
          * references:
          * https://stackoverflow.com/questions/47120633/webview-failed-to-validate-the-certificate-chain
          * https://stackoverflow.com/questions/59442126/handshake-failed-returned-1-ssl-error-code-1-net-error-202
@@ -168,8 +177,9 @@ public class MyWebView extends WebView {
         public void onProgressChanged(WebView v, int newProgress) {
             progress = newProgress == 100 ? 0 : newProgress;
 
-            if (isCurrrent())
+            if (isCurrrent()) {
                 updateProgress();
+            }
         }
     }
 
@@ -182,8 +192,9 @@ public class MyWebView extends WebView {
             }
         }
         else {
-            if (progressBar.getVisibility() != View.VISIBLE)
+            if (progressBar.getVisibility() != View.VISIBLE) {
                 progressBar.show();
+            }
 
             progressBar.setProgress(progress);
         }
@@ -193,28 +204,45 @@ public class MyWebView extends WebView {
         @Override
         public void onDownloadStart(String url, String userAgent,
                 String contentDisposition, String mimetype, long contentLength) {
+
+            if (dm == null) {
+                dm = (DownloadManager) context.getSystemService(context.DOWNLOAD_SERVICE);
+            }
+
+            rq = new DownloadManager.Request(Uri.parse(url));
+            rq.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            rq.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
+                    URLUtil.guessFileName(url, contentDisposition, mimetype));
+
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     == PackageManager.PERMISSION_GRANTED) {
-                DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
-                DownloadManager dm = (DownloadManager) context.getSystemService(context.DOWNLOAD_SERVICE);
-                req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
-                        URLUtil.guessFileName(url, contentDisposition, mimetype));
-                dm.enqueue(req);
+                directDownload();
             }
             else {
-                ((MainActivity) context).show("Storage permission not granted.");
+                int PERMISSION_REQUEST_CODE = 2;
+                ActivityCompat.requestPermissions(
+                    (MainActivity) context
+                    , new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}
+                    , Coordinator.PERMISSION_REQUEST_CODE_DIRECT
+                );
             }
         }
     }
 
-    protected class MyWebLongClickListener implements OnLongClickListener {
+    public void directDownload() {
+        if (rq != null) {
+            dm.enqueue(rq);
+            rq = null;
+        }
+    }
+
+    protected class MyOnLongClickListener implements OnLongClickListener {
         @Override
         public boolean onLongClick(View v) {
             WebView.HitTestResult result = ((WebView) v).getHitTestResult();
-            if (result == null) {
-                return false;
-            }
+
+            if (result == null) return false;
+
             int type = result.getType();
             String extra = result.getExtra();
             switch (type) {
@@ -238,7 +266,7 @@ public class MyWebView extends WebView {
         builder.setItems(R.array.url_actions, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                ((MainActivity)context).newTab(url, which == 0, getThis());
+                ((MainActivity)context).newTab(url, getThis(), which == 0);
             }
         }).show();
     }
@@ -262,11 +290,13 @@ public class MyWebView extends WebView {
             if (title != null && !"".equals(title)) {
                 bookTitle = title;
             }
-            else
+            else {
                 bookTitle = getUrl();
+            }
         }
-        if (!downloading)
-            return bookTitle;
+
+        if (!downloading) return bookTitle;
+
         return "(" + percent + "%) " + bookTitle ;
     }
 
@@ -275,6 +305,7 @@ public class MyWebView extends WebView {
         if (obj instanceof MyWebView) {
             return ((MyWebView)obj).getTime() == time;   
         }
+
         return false;
     }
 
@@ -295,48 +326,6 @@ public class MyWebView extends WebView {
         clearCache(false);
         super.loadUrl("about:blank");
         super.destroy();
-    }
-
-    public void runJs(int stage, String cmd) {
-        String jstr = "javascript:(()=>{" + cmd + "})()";
-        ((Activity) context).runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                evaluateJavascript(jstr, new ValueCallback<String>() {
-                    @Override
-                    public void onReceiveValue(String value) {
-                        js.consume(stage, value);
-                    }
-                });
-            }
-        });
-    }
-
-    public void runJs2(int stage, String filepath) {
-        runJs(stage, getStringFromFile(filepath));
-    }
-
-    public void runJs2(int stage, String filepath, String search, String replace) {
-        runJs(stage, getStringFromFile(filepath).replace(search, replace));
-    }
-
-    protected String getStringFromFile(String filePath) {
-        StringBuilder sb = new StringBuilder();
-        try {
-            InputStream is = context.getAssets().open(filePath);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            String line = null;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-            is.close();        
-        }
-        catch(IOException e) {
-            e.printStackTrace();
-            ((MainActivity)context).alert("Error", e.getMessage());
-        }
-        return sb.toString();
     }
 
     public boolean isCurrrent() {
@@ -377,5 +366,50 @@ public class MyWebView extends WebView {
     public void update(int percent) {
         this.percent = percent;
         ((MainActivity)context).onTabChanged();
+    }
+
+    public void runJs(int stage, String cmd) {
+        String jstr = "javascript:(()=>{" + cmd + "})()";
+        ((Activity) context).runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                evaluateJavascript(jstr, new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String value) {
+                        // the return value was surrounded by quatation mark if it is a String in business environment
+                        if (stage > 0) {
+                            js.consume(stage, value);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    public void runJs2(int stage, String filepath) {
+        runJs(stage, getStringFromFile(filepath));
+    }
+
+    public void runJs2(int stage, String filepath, String search, String replace) {
+        runJs(stage, getStringFromFile(filepath).replaceAll(search, replace));
+    }
+
+    protected String getStringFromFile(String filePath) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            InputStream is = context.getAssets().open(filePath);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+            is.close();
+        }
+        catch(IOException e) {
+            e.printStackTrace();
+            ((MainActivity)context).alert("Error", e.getMessage());
+        }
+        return sb.toString();
     }
 }

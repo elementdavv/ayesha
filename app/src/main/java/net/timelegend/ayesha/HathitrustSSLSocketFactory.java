@@ -1,20 +1,37 @@
 package net.timelegend.ayesha;
 
+import android.content.Context;
+
+import java.io.InputStream;
 import java.io.IOException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-import java.security.KeyManagementException;
+import java.security.cert.CertificateFactory;
+import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 
-import android.content.Context;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
-public class HathitrustSSLSocketFactory extends AdditionalSSLSocketFactory {
-    protected static HathitrustSSLSocketFactory hathitrustSSLSocketFactory = null;
+/*
+ * reference:
+ * https://stackoverflow.com/questions/64844311/certpathvalidatorexception-connecting-to-a-lets-encrypt-host-on-android-m-or-ea
+ */
+public class HathitrustSSLSocketFactory {
+    protected static SSLSocketFactory hathitrustSSLSocketFactory = null;
 
-    public static HathitrustSSLSocketFactory get(Context context) {
+    public static SSLSocketFactory get(Context context) {
         if (hathitrustSSLSocketFactory == null) {
             try {
-                hathitrustSSLSocketFactory = new HathitrustSSLSocketFactory(context);
+                KeyStore keyStore = getKeyStore(context);
+                String algorithm = TrustManagerFactory.getDefaultAlgorithm();
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance(algorithm);
+                tmf.init(keyStore);
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(null, tmf.getTrustManagers(), null);
+                hathitrustSSLSocketFactory = sslContext.getSocketFactory();
             }
             catch (Exception e) {
                 e.printStackTrace();
@@ -24,15 +41,23 @@ public class HathitrustSSLSocketFactory extends AdditionalSSLSocketFactory {
         return hathitrustSSLSocketFactory;
     }
 
-    protected HathitrustSSLSocketFactory(Context context)
-        throws IOException, NoSuchAlgorithmException, KeyStoreException, CertificateException, KeyManagementException {
+    public static KeyStore getKeyStore(Context context)
+        throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
 
-        super(context);
-    }
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
 
-    @Override
-    protected void setStore(Context context) {
-        storeUri = context.getString(R.string.hathitrust_keystore);
-        password = context.getString(R.string.hathitrust_keystore_password);
+        InputStream is1 = context.getResources().openRawResource(R.raw.isrg_root_x1);
+        Certificate cert1 = cf.generateCertificate(is1);
+
+        InputStream is2 = context.getResources().openRawResource(R.raw.isrg_root_x2);
+        Certificate cert2 = cf.generateCertificate(is2);
+
+        String type = KeyStore.getDefaultType();
+        KeyStore ks = KeyStore.getInstance(type);
+        ks.load(null, null);
+        ks.setCertificateEntry("isrg_root_x1", cert1);
+        ks.setCertificateEntry("isrg_root_x2", cert2);
+
+        return ks;
     }
 }

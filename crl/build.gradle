@@ -4,12 +4,13 @@ group = 'net.timelegend.ayesha'
 version = '1.0'
 
 dependencies {
+    api fileTree(include: '*.jar', dir: 'libs')
 }
 
 android {
     compileSdkVersion 34
     defaultConfig {
-        namespace 'net.timelegend.crl'
+        namespace 'crl.android.pdfwriter'
         minSdkVersion 21
         targetSdkVersion 34
     }

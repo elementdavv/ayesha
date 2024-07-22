@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
@@ -34,31 +35,37 @@ import java.util.TimerTask;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
 
-import net.timelegend.crl.InvalidImageException;
-import net.timelegend.crl.PDFWriter;
+// import crl.android.pdfwriter.InvalidImageException;
+import crl.android.pdfwriter.PDFWriter;
 
 public abstract class Job {
-    protected enum Status {READY, START, COMPLETE, FAIL, WAIT};
+    protected enum Status {READY, START, WAIT, COMPLETE, FAIL};
     protected enum What {
-        SUCCESS(0), ERROR(1), REJECT_429(2), RETURN_BOOK(10);
+        SUCCESS(0),
+        ERROR(1),
+        _429(2), /* temporarily unavailable in hathitrust, wait 60 seconds */
+        RETURN_BOOK(10);
         private final int value;
         private What(int value) { this.value = value; }
         public int get() { return value; }
     };
 
-    protected final static int CORE_POOL_SIZE = 5;
-    protected final static int MAX_POOL_SIZE = 25;
     protected final static long KEEP_ALIVE_TIME = 60L;
     protected final static int TRI_LIMIT = 3;
     protected final static int BUFFERSIZE = 8192;
+    protected final static int WAIT_SECONDS = 61;
 
     protected Context context;
     protected MyWebView v;
-    protected Handler handler;
     protected Object docLock;
+    protected Handler handler;
     protected String origin;
     protected Status status;
+    protected File downloadPath;
+    protected int availableProcessors;
+    protected ThreadPoolExecutor executor;
 
     protected String fileId;
     protected String referer;
@@ -68,7 +75,7 @@ public abstract class Job {
     protected String filename;
 
     protected String cookies;
-    protected AdditionalSSLSocketFactory additionalSSLSocketFactory;
+    protected SSLSocketFactory additionalSSLSocketFactory;
     protected File file;
     protected PDFWriter doc;
     protected int tasks;
@@ -78,16 +85,6 @@ public abstract class Job {
     protected int paused;
     protected int recover;
     protected Timer timer;
-
-    protected final static File downloadPath = Environment
-            .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-
-    protected final static ThreadPoolExecutor executor = new ThreadPoolExecutor(
-            CORE_POOL_SIZE,
-            MAX_POOL_SIZE,
-            KEEP_ALIVE_TIME,
-            TimeUnit.SECONDS,
-            new LinkedBlockingQueue<Runnable>());
 
     protected class JobInfo {
         int pageIndex;
@@ -110,6 +107,11 @@ public abstract class Job {
                 costMessage(msg);
             }
         };
+
+        downloadPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        availableProcessors = Runtime.getRuntime().availableProcessors();
+        executor = null;
+
         additionalSSLSocketFactory = null;
         jobs = new ConcurrentLinkedQueue<JobInfo>();
         jobcount = new AtomicInteger();
@@ -125,8 +127,12 @@ public abstract class Job {
     public abstract void setScale(String data);
     protected abstract void dispatch();
 
-    public void setInfo(Map<String, String> data) {
-        this.info = data;
+    public void setInfo(Map<String, String> info) {
+        this.info = info;
+    }
+
+    public int getAvailableProcessors() {
+        return availableProcessors;
     }
 
     @JavascriptInterface
@@ -165,7 +171,7 @@ public abstract class Job {
                 ActivityCompat.requestPermissions(
                     (MainActivity) context
                     , new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}
-                    , PERMISSION_REQUEST_CODE
+                    , Coordinator.PERMISSION_REQUEST_CODE_JOB
                 );
             }
         }
@@ -176,7 +182,7 @@ public abstract class Job {
     }
 
     public void getFile() {
-        Log.i("new job: " + filename + ", " + pagecount + " trunks.");
+        Log.i(filename + " " + pagecount + " trunks");
         file = new File(downloadPath, filename);
         FileOutputStream fos = null;
 
@@ -184,11 +190,12 @@ public abstract class Job {
             fos = new FileOutputStream(file);
 		    doc = new PDFWriter(fos, info);
         }
-        catch(IOException e) {
+        catch (IOException e) {
             e.printStackTrace();
             doc = null;
             fos = null;
             ((MainActivity)context).alert("Error", e.getMessage());
+            return;
         }
 
         getLeafs();
@@ -207,6 +214,14 @@ public abstract class Job {
         paused = 0;
         recover = 0;
         timer = null;
+        endExecutor();
+
+        executor = new ThreadPoolExecutor(
+                availableProcessors,
+                availableProcessors,
+                KEEP_ALIVE_TIME,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>());
     }
 
     protected void getLeafs() {
@@ -221,16 +236,18 @@ public abstract class Job {
 
     synchronized protected void pause() {
         paused++;
-        Log.i("paused " + paused + ": " + filename);
+        Log.i(filename + " pause");
     }
 
     synchronized protected void resume() {
-        Log.i("resume " + paused + ": " + filename);
+        paused--;
+        Log.i(filename + " resume " + recover);
 
-        if (--paused <= 0) {
+        if (paused <= 0) {
             paused = 0;
-            while (recover-- > 0) {
+            while (recover > 0) {
                 dispatch();
+                recover--;
             }
         }
     }
@@ -242,7 +259,7 @@ public abstract class Job {
             timer = new Timer();
 
             timer.scheduleAtFixedRate(new TimerTask() {
-                int waitlen = 61;
+                int waitlen = WAIT_SECONDS;
 
                 @Override
                 public void run() {
@@ -253,7 +270,9 @@ public abstract class Job {
                         waitProgressNotify(String.valueOf(waitlen));
                     }
                 }
-            }, 0, 1000);
+            }
+            , /*delay*/0
+            , /*period*/1000);
         }
     }
 
@@ -265,9 +284,16 @@ public abstract class Job {
         }
     }
 
+    synchronized private void endTimer() {
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+    }
+
     synchronized protected void nextLeaf() {
         if (++complete >= jobcount.get()) {
-            Log.i(filename + " completes");
+            Log.i(filename + " complete");
             clear();
             completeNotify();
             returnBook();
@@ -290,7 +316,7 @@ public abstract class Job {
                 try {
                     doc.end();
                 }
-                catch(IOException e) {
+                catch (IOException e) {
                     e.printStackTrace();
                 }
                 finally {
@@ -308,19 +334,14 @@ public abstract class Job {
         if (status != Status.FAIL) {
             Log.i(filename + " aborted");
             failNotify();
+            endExecutor();
             endTimer();
             clear();
             file.delete();
 
-            if (msg != null)
+            if (msg != null) {
                 ((MainActivity)context).alert("Error", msg);
-        }
-    }
-
-    synchronized private void endTimer() {
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
+            }
         }
     }
 
@@ -328,7 +349,7 @@ public abstract class Job {
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                Log.i(filename + " " + pageIndex + " start");
+                Log.i(filename + " " + pageIndex + " " + tri);
                 Message msg = handler.obtainMessage();
                 msg.arg1 = pageIndex;
                 msg.arg2 = tri;
@@ -358,9 +379,10 @@ public abstract class Job {
 
                     while ( (n = is.read(buf)) > 0 ) {
                         if (status == Status.FAIL) {
-                            Log.i(filename + " " + pageIndex + " close");
+                            Log.w(filename + " " + pageIndex + " close");
                             baos.close();
                             is.close();
+                            conn.disconnect();
                             return;
                         }
 
@@ -368,26 +390,34 @@ public abstract class Job {
                     }
 
                     is.close();
-                    Log.i(filename + " " + pageIndex + " end");
+                    conn.disconnect();
                     msg.what = What.SUCCESS.get();
+                    Log.i(filename + " " + pageIndex + " done");
                     Bundle bundle = new Bundle();
                     bundle.putByteArray("src", baos.toByteArray());
                     msg.setData(bundle);
                     baos.close();
                 }
-                catch(IOException e) {
-                    Log.i(filename + " " + pageIndex + " fail");
+                // temporarily unavailable in hathitrust
+                catch (FileNotFoundException e) {
+                    Log.e(filename + " " + pageIndex + " not found");
+                    msg.what = What._429.get();
+                }
+                catch (IOException e) {
+                    Log.e(filename + " " + pageIndex + " fail");
                     e.printStackTrace();
-                    if (e.getMessage().indexOf("429") > -1) {   // too many request
-                        msg.what = What.REJECT_429.get();
+                    // too many request, temporarily unavailable in hathitrust
+                    if (e.getMessage().indexOf("429") > -1) {
+                        msg.what = What._429.get();
                     }
                     else {
                         msg.what = What.ERROR.get();
                     }
                 }
                 finally {
-                    if (status == Status.START)
+                    if (status == Status.START || status == Status.WAIT) {
                         msg.sendToTarget();
+                    }
                 }
             }
         });
@@ -395,6 +425,7 @@ public abstract class Job {
 
     protected void costMessage(Message msg) {
         int pageIndex = msg.arg1;
+        int tri = msg.arg2;
 
         // return book
         if (msg.what == What.RETURN_BOOK.get()) {
@@ -402,54 +433,52 @@ public abstract class Job {
                 v.reload();
             }
             else {
-                Log.i(filename + " return failed: " + msg.arg1);
+                Log.w(filename + " return fail " + msg.arg1);
             }
-            return;
         }
-        if (msg.what == What.SUCCESS.get()) {
+        else if (msg.what == What.SUCCESS.get()) {
             byte[] src = msg.getData().getByteArray("src");
             try {
                 synchronized(docLock) {
-                    if (doc != null) {
+                    if (doc == null) {
+                        throw new RuntimeException("Null document");
+                    }
+                    else {
                         doc.newImagePage(pageIndex, src);
                     }
-                    else return;
                 }
             }
-            catch(InvalidImageException | IOException e) {
-                Log.i(filename + " " + pageIndex + " bad");
-                e.printStackTrace();
-                // for debug
-                // if (e instanceof InvalidImageException) {
+            catch (Exception e) {
+                // for test purpose
+                // if (e instanceOf InvalidImageException)
                 //     saveToFile(src, fileId + "_" + pageIndex + ".jpg");
-                // }
-                msg.what = What.ERROR.get();
-            }
-            if (msg.what == What.SUCCESS.get()) {
-                nextLeaf();
+                Log.e(filename + " " + pageIndex + " " + e.getMessage());
+                e.printStackTrace();
+                abort(e.getMessage());
                 return;
             }
+
+            nextLeaf();
         }
-        // what: 1/2
-        int tri = msg.arg2;
-        if (tri < TRI_LIMIT || msg.what == What.REJECT_429.get()) {
-            if (msg.what == What.REJECT_429.get()) {
+        else if (msg.what == What._429.get() || tri < TRI_LIMIT) {
+            if (msg.what == What._429.get()) {
                 toWait();
             }
             else {
                 tri++;
             }
+
             jobs.offer(new JobInfo(pageIndex, tri));
             jobcount.incrementAndGet();
             nextLeaf();
         }
-        else {
-            Log.i(filename + " " + pageIndex + " too many errors");
-            abort("Network errors. Abort.");
+        else /* What.ERROR && tri >= TRI_LIMIT */{
+            Log.e(filename + " " + pageIndex + " too many errors");
+            abort("Too many errors");
         }
     }
 
-    // for debug
+    // for test purpose
     // private void saveToFile(byte[] src, String fn) {
     //     File f = new File(downloadPath, fn);
     //     FileOutputStream fos = null;
@@ -458,7 +487,7 @@ public abstract class Job {
     //         fos = new FileOutputStream(f);
     //         fos.write(src);
     //     }
-    //     catch(IOException e) {
+    //     catch (IOException e) {
     //         e.printStackTrace();
     //     }
     //     finally {
@@ -466,7 +495,16 @@ public abstract class Job {
     //     }
     // }
 
-    protected void returnBook() {}
+    protected void returnBook() {
+        endExecutor();
+    }
+
+    synchronized protected void endExecutor() {
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
+        }
+    }
 
     protected void readyNotify() {
         status = Status.READY;
@@ -491,7 +529,7 @@ public abstract class Job {
     }
 
     protected void waitProgressNotify(String waitlen) {
-        runJs2(0, "waitprogressnotify.js", "progress", waitlen);
+        runJs2(0, "waitprogressnotify.js", "progresss", waitlen);
     }
 
     protected void continueNotify() {

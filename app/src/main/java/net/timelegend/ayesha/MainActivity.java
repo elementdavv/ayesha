@@ -31,23 +31,30 @@ import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.ads.initialization.InitializationStatus;
 import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 
+import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Timer;
 import java.util.TimerTask;
 
 // import java.io.IOException;
-// import net.timelegend.crl.InvalidImageException;
-// import net.timelegend.crl.PDFWriterDemo;
+// import crl.android.pdfwriter.InvalidImageException;
+// import crl.android.pdfwriter.PDFWriterDemo;
 
 public class MainActivity extends AppCompatActivity {
     // const
-    enum InStatus {IN_SITES, IN_MAIN, IN_SUM, IN_ABOUT};
+    enum InStatus {IN_NONE, IN_SITES, IN_MAIN, IN_SUM, IN_ABOUT};
 
-    private final static String UrlGithub = "https://github.com/elementdavv/ayesha";
+    private final static String URLGITHUB = "https://github.com/elementdavv/ayesha";
+    private final static String JOINEDURLS = "joinedUrls";
+    private final static String CURRENT = "current";
+    private final static String DELIMITER = "ayesha";
 
     // ui
     private ContentLoadingProgressBar progressBar;
@@ -76,16 +83,15 @@ public class MainActivity extends AppCompatActivity {
         Coordinator.context = this;
         setup();
 
-        // if (restoreInstance(savedInstanceState)) 
-        //     return;
+        inStatus = InStatus.IN_NONE;
 
-        if (restoreSession())
-            return;
+        if (restoreSession()) return;
 
         current = -1;
         openSites();
     }
 
+    // UI initialization
     private void setup() {
         // general
         Toolbar t = (Toolbar) findViewById(R.id.toolbar); 
@@ -107,8 +113,7 @@ public class MainActivity extends AppCompatActivity {
             img.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    MyWebView v1 = Coordinator.newView(site);
-                    setupView(v1);
+                    newTab(site);
                 }
             });
         }
@@ -121,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
         githubView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(UrlGithub));
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(URLGITHUB));
                 startActivity(browserIntent);
             }
         });
@@ -156,21 +161,24 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private boolean restoreInstance(Bundle savedInstanceState) {
-        if (savedInstanceState != null) {
-            ArrayList<CharSequence> urls = savedInstanceState.getCharSequenceArrayList("urls");
-            ArrayList<Bundle> sites = savedInstanceState.getParcelableArrayList("sites", Bundle.class);
-            int i = 0;
+    private boolean restoreSession() {
+        SharedPreferences prefs = getPreferences(Context.MODE_PRIVATE);
+        String joinedUrls = prefs.getString(JOINEDURLS, null);
+        current = prefs.getInt(CURRENT, -1);
 
-            while (i < urls.size()) {
-                MyWebView v = Coordinator.newView(urls.get(i).toString());
-                setupView(v, false);
-                v.restoreState(sites.get(i));
-                i++;
+        if (joinedUrls != null) {
+            String[] urls = joinedUrls.split(DELIMITER);
+            Iterator<String> it = Arrays.asList(urls).iterator();
+
+            while (it.hasNext()) {
+                newTab(it.next(), null, false);
             }
 
-            if (i > 0) {
-                current = 0;
+            int sz = dataSet.size();
+
+            if (sz > 0) {
+                if (current >= sz) current = sz - 1;
+                if (current < 0) current = 0;
                 tabView.setItemChecked(current, true);
                 openMain();
                 return true;
@@ -180,39 +188,44 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    private boolean restoreSession() {
+    // onStop() may not be called, so save prefs in onPause()
+    // do not use savedInstanceState, it causes crash on permission change
+    @Override
+    protected void onPause() {
+        saveSession();
+        super.onPause();
+    }
+
+    private void saveSession() {
         SharedPreferences prefs = getPreferences(Context.MODE_PRIVATE);
-        Set<String> urls = prefs.getStringSet("urls", null);
+        SharedPreferences.Editor edit = prefs.edit();
 
-        if (urls != null) {
-            Iterator<String> it = urls.iterator();
+        if (dataSet.size() == 0) {
+            edit.remove(JOINEDURLS);
+        }
+        else {
+            String joinedUrls = dataSet.stream()
+                .map(MyWebView::getUrl)
+                .collect(Collectors.joining(DELIMITER));
 
-            while (it.hasNext()) {
-                MyWebView v = Coordinator.newView(it.next());
-                setupView(v, false);
-            }
-
-            if (dataSet.size() > 0) {
-                current = 0;
-                tabView.setItemChecked(current, true);
-                openMain();
-                return true;
-            }
+            edit.putString(JOINEDURLS, joinedUrls);
+            edit.putInt(CURRENT, current);
         }
 
-        return false;
+        edit.apply();
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
-        if (hasFocus)
-            handleClipboard();
+        super.onWindowFocusChanged(hasFocus);
+
+        if (hasFocus) watchClipboard();
     }
 
-    private void handleClipboard() {
+    private void watchClipboard() {
         ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         ClipData clip = cm.getPrimaryClip();
-            
+
         if (clip == null) return;
 
         MyWebView v = null;
@@ -235,61 +248,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle instanceState) {
-        saveInstance(instanceState);
-        super.onSaveInstanceState(instanceState);
-    }
-
-    private void saveInstance(Bundle instanceState) {
-        if (dataSet.size() > 0) {
-            ArrayList<CharSequence> urls = new ArrayList<>();
-            ArrayList<Bundle> sites = new ArrayList<>();
-            int i = 0;
-
-            while (i < dataSet.size()) {
-                CharSequence url = dataSet.get(i).getUrl();
-                urls.add(url);
-                Bundle site = new Bundle();
-                dataSet.get(i).saveState(site);
-                sites.add(site);
-                i++;
-            }
-
-            instanceState.putCharSequenceArrayList("urls", urls);
-            instanceState.putParcelableArrayList("sites", sites);
-        }
-    }
-
-    @Override
-    protected void onStop() {
-        saveSession();
-        super.onStop();
-    }
-
-    private void saveSession() {
-        SharedPreferences prefs = getPreferences(Context.MODE_PRIVATE);
-        SharedPreferences.Editor edit = prefs.edit();
-
-        if (dataSet.size() == 0)
-            edit.remove("urls");
-        else {
-            Set<String> urls = new HashSet<>();
-            int i = 0;
-
-            while (i < dataSet.size()) {
-                urls.add(dataSet.get(i++).getUrl());
-            }
-
-            edit.putStringSet("urls", urls);
-        }
-
-        edit.apply();
-    }
-
-    public void newTab(String url, boolean foreground, MyWebView creator) {
+    /*
+     * create a tab from restore and context menu
+     * url: the url of the page
+     * creator: the parent which create the page
+     * foreground: foreground or background
+     */
+    public void newTab(String url, MyWebView creator, boolean foreground) {
         MyWebView v = Coordinator.newView(url, creator);
         setupView(v, foreground);
+    }
+
+    /*
+     * create a tab from sites list
+     * it should be no parent and be foreground
+     */
+    public void newTab(Integer site) {
+        MyWebView v = Coordinator.newView(site);
+        setupView(v);
     }
 
     private void setupView(MyWebView v) {
@@ -297,30 +273,38 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupView(MyWebView v, boolean foreground) {
-        if (v == null) return;
+        if (v != null) {
+            registerForContextMenu(v);
+            mainLayout.addView(v);
+            dataSet.add(v);
+            onTabChanged();
 
-        registerForContextMenu(v);
-        mainLayout.addView(v);
-        dataSet.add(v);
-        onTabChanged();
-
-        if (foreground) {
-            if (inStatus == InStatus.IN_MAIN) {
-                dataSet.get(current).setVisibility(View.GONE);
+            if (foreground) {
+                if (inStatus == InStatus.IN_MAIN) {
+                    dataSet.get(current).setVisibility(View.GONE);
+                }
+                current = dataSet.size() - 1;
+                tabView.setItemChecked(current, true);
+                openMain();
             }
-            current = dataSet.size() - 1;
-            tabView.setItemChecked(current, true);
-            openMain();
-        }
-        else {
-            v.setVisibility(View.GONE);
+            else {
+                v.setVisibility(View.GONE);
+            }
         }
     }
 
+    /*
+     * when tablist needs update
+     * include item title
+     * not include item highlight change
+     */
     public void onTabChanged() {
         adapter.notifyDataSetChanged();
     }
 
+    /*
+     * user close tab from tablist
+     */
     public void onTabClose(int position) {
         if (dataSet.get(position).isDownloading()) {
             show("It is downloading.");
@@ -328,6 +312,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         MyWebView v = dataSet.remove(position);
+        onTabChanged();
         mainLayout.removeView(v);
         v.destroy();
         v = null;
@@ -340,12 +325,14 @@ public class MainActivity extends AppCompatActivity {
             current--;
         }
 
-        onTabChanged();
-
-        if (current > -1)
+        if (current > -1) {
             tabView.setItemChecked(current, true);
+        }
     }
 
+    /*
+     * hide progressBar
+     */
     public void hideProgress() {
         if (progressBar.getVisibility() == View.VISIBLE) {
             progressBar.hide();
@@ -387,8 +374,9 @@ public class MainActivity extends AppCompatActivity {
                 if (dataSet.get(current).isDownloading()) {
                     show("It is downloading.");
                 }
-                else 
+                else {
                     dataSet.get(current).reload();
+                }
             }
 
             return true;
@@ -462,6 +450,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /*
+     * exit the app
+     */
     private void quit() {
         if (toquit == 1) {
             toquit = 0;
@@ -484,20 +475,26 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /*
+     * a page created by another page can be closed by backpress
+     */
     private void closeChild(int child, int creator) {
         MyWebView vw = dataSet.get(creator);
         vw.setVisibility(View.VISIBLE);
         vw.updateProgress();
         dataSet.get(child).setVisibility(View.GONE);
         MyWebView v = dataSet.remove(child);
+        onTabChanged();
         mainLayout.removeView(v);
         v.destroy();
         v = null;
         current = creator;
-        onTabChanged();
         tabView.setItemChecked(current, true);
     }
 
+    /*
+     * find the position of a page
+     */
     public int locateView(MyWebView v) {
         if (v == null) return -1;
 
@@ -526,17 +523,26 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            Thread t = new Thread(new Runnable() {
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    getCurrentView().getJob().begin2();
+                    if (requestCode == Coordinator.PERMISSION_REQUEST_CODE_JOB) {
+                        getCurrentView().getJob().begin2();
+                    }
+                    else if (requestCode == Coordinator.PERMISSION_REQUEST_CODE_DIRECT) {
+                        getCurrentView().directDownload();
+                    }
+
+                    executor.shutdown();
                 }
             });
-
-            t.start();
         }
     }
 
+    /*
+     * open page view
+     */
     public boolean openMain() {
         if (inStatus == InStatus.IN_MAIN) return false;
 
@@ -554,8 +560,13 @@ public class MainActivity extends AppCompatActivity {
             return false;
     }
 
+    /*
+     * open sites list view
+     */
     public boolean openSites() {
-        if (inStatus == InStatus.IN_SITES) return false;
+        if (inStatus == InStatus.IN_SITES) {
+            return openMain();
+        }
 
         sitesView.setVisibility(View.VISIBLE);
         sumView.setVisibility(View.GONE);
@@ -570,8 +581,13 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    /*
+     * open tablist view
+     */
     public boolean openTabList() {
-        if (inStatus == InStatus.IN_SUM) return false;
+        if (inStatus == InStatus.IN_SUM) {
+            return openMain();
+        }
 
         sumView.setVisibility(View.VISIBLE);
         sitesView.setVisibility(View.GONE);
@@ -586,8 +602,13 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    /*
+     * open about view
+     */
     public boolean openAbout() {
-        if (inStatus == InStatus.IN_ABOUT) return false;
+        if (inStatus == InStatus.IN_ABOUT) {
+            return openMain();
+        }
 
         aboutView.setVisibility(View.VISIBLE);
         sitesView.setVisibility(View.GONE);

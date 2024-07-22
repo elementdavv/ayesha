@@ -12,8 +12,14 @@ const buttonstring = "
                 <legend class='fs-5'>Quality</legend>
                 <select id='iadscaleid' class='form-select' style='border:0;'>
                     <option value='size=full'>full size</option>
-                </select> 
+                </select>
             </fieldset>
+            <fieldset class='mb-3'>
+                <legend class='fs-5'>Tasks</legend>
+                <select id='iadtasksid' class='form-select' style='border:0;'>
+                </select>
+            </fieldset>
+            </div>
             <p class='mb-3'>
                 <button type='button' class='btn btn-outline-dark' onclick='job.begin()'>
                     <div>
@@ -22,11 +28,12 @@ const buttonstring = "
                     </div>
                 </button>
             </p>
-            </div>
         </div>
     </div>
 </div>
 ";
+const ayesha = document.getElementsByClassName('me-1')[1]?.textContent;
+if (ayesha == 'Ayesha') return true;
 const ac = document.getElementById('controls')?.getElementsByClassName('border-top');
 if (ac.length == 0) return false;
 ac[0].insertAdjacentHTML('afterend', buttonstring);

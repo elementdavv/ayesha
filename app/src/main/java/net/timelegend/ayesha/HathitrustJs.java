@@ -6,7 +6,7 @@ public class HathitrustJs extends Js {
     public HathitrustJs(Context context, MyWebView v) {
         super(context, v);
         stepLimit = 4;
-        period = 2000;
+        period = 2000L;
     }
 
     @Override
@@ -19,6 +19,7 @@ public class HathitrustJs extends Js {
         switch (stage) {
             case 1:
                 if (timer == null) return;
+
                 if ("true".equals(value)) {
                     timer.cancel();
                     timer = null;
@@ -52,14 +53,14 @@ public class HathitrustJs extends Js {
             case 12:
                 if ("true".equals(value)) {
                     Log.i("load scales");
-                    runJs2(13, "ht/loadscales.js");
+                    runJs2(13, "ht/loadscales.js", "availableProcessors", String.valueOf(job.getAvailableProcessors()));
                 }
                 else {
                     Log.i("fail");
                 }
                 break;
             case 21:
-                String fileId = value.substring(1, value.length() - 1);
+                String fileId = value.substring(1, value.length() - 1);// start to end excluded
                 job.setFileId(fileId);
                 Log.i("get book data");
                 runJs(22, "return window.manifest?.firstPageSeq + ',' + window.manifest?.totalSeq;");
@@ -73,6 +74,7 @@ public class HathitrustJs extends Js {
             default:
                 break;
         }
+
         super.consume(stage, value);
     }
 }

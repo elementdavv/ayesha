@@ -17,7 +17,11 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
-
+/*
+android 5.0 -> api 21
+android 7.0 -> api 24
+android 14  -> api 34
+*/
 android {
     compileSdkVersion 34
     defaultConfig {

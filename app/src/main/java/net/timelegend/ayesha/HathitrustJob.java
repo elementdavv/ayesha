@@ -1,6 +1,7 @@
 package net.timelegend.ayesha;
 
 import android.content.Context;
+import android.os.Build;
 
 public class HathitrustJob extends Job {
     private int firstPageSeq;
@@ -27,30 +28,36 @@ public class HathitrustJob extends Job {
 
     @Override
     public void setScale(String data) {
-        scale = data;
+        String[] scales = data.split(",");
+        scale = scales[0];
         filename = fileId + "_" + (scale.indexOf("full") > -1 ? "full" : scale.substring(7)) + ".pdf";
-        tasks = 5;
+        tasks = Integer.valueOf(scales[1]);
     }
 
     @Override
     public void begin2() {
-        additionalSSLSocketFactory = HathitrustSSLSocketFactory.get(context);
+        // less than android 7.0 (api 24)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            additionalSSLSocketFactory = HathitrustSSLSocketFactory.get(context);
 
-        if (additionalSSLSocketFactory == null) {
-            ((MainActivity) context).show("Server keystore error.");
+            if (additionalSSLSocketFactory == null) {
+                ((MainActivity) context).show("Certificate error");
+                return;
+            }
         }
-        else {
-            super.begin2();
-            Log.i("get bookId");
-            runJs(21, "return window.manifest?.id;");
-        }
+
+        super.begin2();
+        Log.i("get bookId");
+        runJs(21, "return window.manifest?.id;");
     }
 
     @Override
     protected void dispatch() {
         JobInfo jobInfo = jobs.poll();
 
-        if (jobInfo == null) return;
+        if (jobInfo == null) {
+            return;
+        }
 
         int pageIndex = jobInfo.pageIndex;
         int tri = jobInfo.tri;

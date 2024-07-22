@@ -12,10 +12,12 @@ public class ArchiveJs extends Js {
 
     @Override
     protected void schedule() {
-        if (step == 0)
+        if (step == 0) {
             runJs(1, "return document.querySelector('meta[property=mediatype]')?.content;");
-        else
+        }
+        else {
             runJs(2, "return window.br?.protected;");
+        }
     }
 
     @Override
@@ -26,7 +28,7 @@ public class ArchiveJs extends Js {
                     runJs(2, "return window.br?.protected;");
                 }
                 else {
-                    Log.i("not texts media, quit");
+                    Log.i("no texts, quit");
                     timer.cancel(); // no texts media, quit
                 }
                 break;
@@ -96,6 +98,7 @@ public class ArchiveJs extends Js {
             default:
                 break;
         }
+
         super.consume(stage, value);
     }
 }

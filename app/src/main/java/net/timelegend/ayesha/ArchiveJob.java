@@ -36,7 +36,7 @@ public class ArchiveJob extends Job {
     public void setScale(String data) {
         scale = data;
         filename = fileId + "_" + scale + ".pdf";
-        tasks = 5;
+        tasks = availableProcessors;
     }
 
     @Override
@@ -50,7 +50,9 @@ public class ArchiveJob extends Job {
     protected void dispatch() {
         JobInfo jobInfo = jobs.poll();
 
-        if (jobInfo == null) return;
+        if (jobInfo == null) {
+            return;
+        }
 
         int pageIndex = jobInfo.pageIndex;
         int tri = jobInfo.tri;
@@ -61,7 +63,8 @@ public class ArchiveJob extends Job {
         }
         catch(JSONException e) {
             e.printStackTrace();
-            ((MainActivity)context).alert("Error", e.getMessage());
+            abort(e.getMessage());
+            return;
         }
 
         uri += uri.indexOf("?") > -1 ? "&" : "?";
@@ -99,6 +102,9 @@ public class ArchiveJob extends Job {
                 catch(IOException e) {
                     Log.i(filename + " return fail");
                     e.printStackTrace();
+                }
+                finally {
+                    endExecutor();
                 }
             }
         });

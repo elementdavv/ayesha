@@ -14,6 +14,8 @@ const buttonstring = "
     </button>
 </div>
 ";
+const iadlabel = document.getElementsByClassName('iadlabel');
+if (iadlabel.length > 0) return true;
 const ab = document.getElementsByClassName('action-buttons-section');
 if (ab.length == 0) return false;
 ab[0].insertAdjacentHTML('afterbegin', buttonstring);

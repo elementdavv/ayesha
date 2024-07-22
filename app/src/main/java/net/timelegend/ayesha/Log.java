@@ -1,7 +1,7 @@
 package net.timelegend.ayesha;
 
 public class Log {
-    private final static String TAG = "net.timelegend.ayesha";
+    private final static String TAG = "ayesha";
 
     public static int i(String msg) {
         return android.util.Log.i(TAG, msg);

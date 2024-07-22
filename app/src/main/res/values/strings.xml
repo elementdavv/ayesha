@@ -5,7 +5,4 @@
     <string name="action_refresh">Refresh</string>
     <string name="action_forward">Forward</string>
     <string name="action_about">About</string>
-
-    <string name="hathitrust_keystore">https://elementdavv.github.io/ayesha/hathitrust/store.bks</string>
-    <string name="hathitrust_keystore_password">hathitrust.org</string>
 </resources>

@@ -62,7 +62,7 @@ public abstract class Js {
                     Map<String, String> info = jsonObjectToMap(new JSONObject(value));
                     job.setInfo(info);
                     Log.i("get scale");
-                    runJs(24, "return document.getElementById('iadscaleid')?.value;");
+                    runJs2(24, "getscales.js");
                 }
                 catch(JSONException e) {
                     e.printStackTrace();
