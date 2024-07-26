@@ -32,7 +32,7 @@ public class Gstate {
 		IndirectObject iobj = document.newIndirectObject();
 		document.includeIndirectObject(iobj);
         iobj.setDictionaryContent("  /Type /ExtGState\n" + "  /ca " + opaquestr + "\n" + "  /CA " + opaquestr + "\n");
-        Pair pair = Pair.create(name, iobj);
+        Pair<String, IndirectObject> pair = Pair.create(name, iobj);
         mGstatesList.put(key, pair);
 
         return pair;

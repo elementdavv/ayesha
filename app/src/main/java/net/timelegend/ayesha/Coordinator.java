@@ -1,8 +1,10 @@
 package net.timelegend.ayesha;
 
 import android.content.Context;
+import android.os.Build;
 import android.util.Pair;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -63,11 +65,25 @@ public class Coordinator {
     // from clipboard, needs check
     public static MyWebView newViewCheck(String url) {
         if (url != null) {
-            Pair<String, String> pair = idMap.entrySet().stream()
-                    .filter(e -> url.indexOf(e.getValue().second) > -1)
-                    .map(Map.Entry::getValue)
-                    .findFirst()
-                    .orElse(null);
+            Pair<String, String> pair = null;
+            // stream was supported from jdk8 of android 7(api24)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                pair = idMap.entrySet().stream()
+                        .filter(e -> url.indexOf(e.getValue().second) > -1)
+                        .map(Map.Entry::getValue)
+                        .findFirst()
+                        .orElse(null);
+            }
+            else {
+                Collection<Pair<String, String>> values = idMap.values();
+
+                for (Pair<String, String> value : values) {
+                    if (url.indexOf(value.second) > -1) {
+                        pair = value;
+                        break;
+                    }
+                }
+            }
 
             if (pair != null) return newView(url, null);
         }

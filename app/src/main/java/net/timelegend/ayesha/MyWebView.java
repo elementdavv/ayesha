@@ -329,7 +329,7 @@ public class MyWebView extends WebView {
     }
 
     public boolean isCurrrent() {
-        return equals(((MainActivity) context).getCurrentView());
+        return (equals(((MainActivity) context).getCurrentView()) && ((MainActivity) context).isInMain());
     }
 
     public MyWebView getThis() {

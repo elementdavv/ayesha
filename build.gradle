@@ -24,4 +24,14 @@ allprojects {
 		google()
 		mavenCentral()
 	}
+
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile) {
+            options.encoding = 'UTF-8'
+            options.compilerArgs += [
+                '-Xlint:unchecked',
+                '-Xlint:deprecation',
+            ]
+        }
+    }
 }

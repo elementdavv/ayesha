@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -43,13 +44,12 @@ import java.util.stream.Collectors;
 import java.util.Timer;
 import java.util.TimerTask;
 
-// import java.io.IOException;
-// import crl.android.pdfwriter.InvalidImageException;
+// import android.content.pm.PackageInfo;
 // import crl.android.pdfwriter.PDFWriterDemo;
 
 public class MainActivity extends AppCompatActivity {
     // const
-    enum InStatus {IN_NONE, IN_SITES, IN_MAIN, IN_SUM, IN_ABOUT};
+    public enum InStatus {IN_NONE, IN_SITES, IN_MAIN, IN_SUM, IN_ABOUT};
 
     private final static String URLGITHUB = "https://github.com/elementdavv/ayesha";
     private final static String JOINEDURLS = "joinedUrls";
@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
 
         while (it.hasNext()) {
             Integer site = it.next();
-            ImageView img = (ImageView) sitesView.findViewById(site.intValue());
+            LinearLayout img = (LinearLayout) sitesView.findViewById(site);
 
             img.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -150,15 +150,16 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // ad
-        AdRequest adRequest = new AdRequest.Builder().build();
         adView = findViewById(R.id.adview);
-        adView.loadAd(adRequest);
+        adView.setVisibility(View.GONE);
+        // AdRequest adRequest = new AdRequest.Builder().build();
+        // adView.loadAd(adRequest);
 
-        MobileAds.initialize(this, new OnInitializationCompleteListener() {
-            @Override
-            public void onInitializationComplete(InitializationStatus initializationStatus) {
-            }
-        });
+        // MobileAds.initialize(this, new OnInitializationCompleteListener() {
+        //     @Override
+        //     public void onInitializationComplete(InitializationStatus initializationStatus) {
+        //     }
+        // });
     }
 
     private boolean restoreSession() {
@@ -204,9 +205,30 @@ public class MainActivity extends AppCompatActivity {
             edit.remove(JOINEDURLS);
         }
         else {
-            String joinedUrls = dataSet.stream()
-                .map(MyWebView::getUrl)
-                .collect(Collectors.joining(DELIMITER));
+            String joinedUrls = "";
+            // stream was supported from jdk8 of android 7(api24)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                joinedUrls = dataSet.stream()
+                        .map(MyWebView::getUrl)
+                        .collect(Collectors.joining(DELIMITER));
+            }
+            else {
+                StringBuffer sb = new StringBuffer("");
+                boolean b = true;
+
+                for (MyWebView v : dataSet) {
+                    if (b) {
+                        b = false;
+                    }
+                    else {
+                        sb.append(DELIMITER);
+                    }
+
+                    sb.append(v.getUrl());
+                }
+
+                joinedUrls = sb.toString();
+            }
 
             edit.putString(JOINEDURLS, joinedUrls);
             edit.putInt(CURRENT, current);
@@ -396,13 +418,22 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         else if (id == R.id.action_about) {
+            // PackageInfo pInfo = null;
             // try {
-            //     PDFWriterDemo.helloworld(this);
+            //     pInfo = getPackageManager().getPackageInfo("com.android.chrome", 0);
             // }
-            // catch(InvalidImageException | IOException e) {
-            //     e.printStackTrace();
-            //     show(e.getMessage());
+            // catch (PackageManager.NameNotFoundException e) {
             // }
+            // if (pInfo == null) {
+            //     show ("chrome not found");
+            // }
+            // else {
+            //     show ("chrome: " + pInfo.versionName);
+            // }
+
+            // Intent demo = new Intent(this, PDFWriterDemo.class);
+            // startActivity(demo);
+
             openAbout();
             return true;
         }
@@ -621,6 +652,10 @@ public class MainActivity extends AppCompatActivity {
 
         inStatus = InStatus.IN_ABOUT;
         return true;
+    }
+
+    public boolean isInMain() {
+        return inStatus == InStatus.IN_MAIN;
     }
 
     public MyWebView getCurrentView() {

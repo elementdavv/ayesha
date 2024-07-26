@@ -7,13 +7,13 @@
 
 package crl.android.pdfwriter;
 
-import android.content.Context;
+import android.app.Activity;
 import android.content.res.AssetManager;
+import android.os.Bundle;
 import android.os.Environment;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
@@ -21,21 +21,21 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PDFWriterDemo {
+public class PDFWriterDemo extends Activity {
 	
-	public static void generateHelloWorldPDF(OutputStream os, Context c) throws InvalidImageException, IOException {
-        AssetManager mngr = c.getAssets();
+	public void generateHelloWorldPDF(OutputStream os) throws InvalidImageException, IOException {
+        AssetManager mngr = this.getAssets();
         Map<String, String> info = new HashMap<>();
         info.put("Title", "Chemical");
         info.put("Author", "Alex");
 		PDFWriter mPDFWriter = new PDFWriter(os, info, PaperSize.FOLIO_WIDTH, PaperSize.FOLIO_HEIGHT);
 
         mPDFWriter.newPage(4);
-        // byte[] b1 = readAllBytes(c, "CRL-borders.png");
-        // byte[] b2 = readAllBytes(c, "CRL-star.jpg");
-        byte[] b3 = readAllBytes(c, "CRL-1bit.jpg");
-        byte[] b4 = readAllBytes(c, "CRL-8bits.jpg");
-        byte[] b5 = readAllBytes(c, "CRL-24bits.jpg");
+        // byte[] b1 = readAllBytes("CRL-borders.png");
+        // byte[] b2 = readAllBytes("CRL-star.jpg");
+        byte[] b3 = readAllBytes("CRL-1bit.jpg");
+        byte[] b4 = readAllBytes("CRL-8bits.jpg");
+        byte[] b5 = readAllBytes("CRL-24bits.jpg");
 	    // mPDFWriter.addImage(b1, 400, 600, Transformation.DEGREES_315_ROTATION);
 	    // mPDFWriter.addImage(b2, 300, 500);
 	    mPDFWriter.addImage(b3, 200, 400, 135, 75);
@@ -65,20 +65,20 @@ public class PDFWriterDemo {
         mPDFWriter.addText(150, 150, 14, "http://coderesearchlabs.com");
         mPDFWriter.addLine(150, 140, 270, 140);
 
-        byte[] src = readAllBytes(c, "book.jpg");
+        byte[] src = readAllBytes("book.jpg");
         mPDFWriter.newImagePage(2, src);
         mPDFWriter.setOpaque(0.0);
         mPDFWriter.addText(150, 150, 14, "http://coderesearchlabs.com");
 
-        byte[] cri = readAllBytes(c, "crisis.png");
+        byte[] cri = readAllBytes("crisis.png");
         mPDFWriter.newImagePage(6, cri);
 
         mPDFWriter.end();
 	}
 	
-    public static byte[] readAllBytes(Context c, String name) throws IOException {
+    public byte[] readAllBytes(String name) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        AssetManager mngr = c.getAssets();
+        AssetManager mngr = this.getAssets();
         InputStream is = mngr.open(name);
         byte[] b = new byte[8192];
         int n = 0;
@@ -91,10 +91,24 @@ public class PDFWriterDemo {
         return src;
     }
 
-	public static void helloworld(Context c) throws InvalidImageException, IOException {
-        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File newFile = new File(path, "helloworld.pdf");
-        FileOutputStream pdfFile = new FileOutputStream(newFile);
-        generateHelloWorldPDF(pdfFile, c);
+    @Override
+	public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        new Thread() {
+            @Override
+            public void run() {
+                File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                File newFile = new File(path, "helloworld.pdf");
+                try {
+                    FileOutputStream pdfFile = new FileOutputStream(newFile);
+                    generateHelloWorldPDF(pdfFile);
+                }
+                catch (IOException | InvalidImageException e) {
+                }
+            }
+        }.start();
+
+        finish();
 	}
 }

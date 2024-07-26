@@ -7,22 +7,53 @@
     android:orientation="vertical"
     android:background="@color/colorSecondary"
     >
-    <ImageView
+    <LinearLayout
         android:id="@+id/site_ia"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingTop="112dp"
-        android:paddingBottom="56dp"
-        app:srcCompat="@drawable/ic_ia"
+        android:orientation="vertical"
+        >
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="4"
         />
-    <ImageView
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="4"
+            app:srcCompat="@drawable/ic_ia"
+        />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="3"
+        />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/site_ht"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingTop="56dp"
-        android:paddingBottom="112dp"
-        app:srcCompat="@drawable/ic_ht"
+        android:orientation="vertical"
+        >
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="3"
         />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="4"
+            app:srcCompat="@drawable/ic_ht"
+        />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="4"
+        />
+    </LinearLayout>
 </LinearLayout>
