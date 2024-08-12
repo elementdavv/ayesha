@@ -182,22 +182,35 @@ public abstract class Job {
     }
 
     public void getFile() {
-        Log.i(filename + " " + pagecount + " trunks");
-        file = new File(downloadPath, filename);
+        String oldname = filename;
+        int i = 0;
         FileOutputStream fos = null;
 
-        try {
-            fos = new FileOutputStream(file);
-		    doc = new PDFWriter(fos, info);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-            doc = null;
-            fos = null;
-            ((MainActivity)context).alert("Error", e.getMessage());
-            return;
+        while (true) {
+            try {
+                file = new File(downloadPath, filename);
+                fos = new FileOutputStream(file);
+		        doc = new PDFWriter(fos, info);
+                break;
+            }
+            // only for android 11: open failed: EEXist (file exists)
+            catch (FileNotFoundException e) {
+                filename = oldname.substring(0, oldname.length() - 4)
+                            + "("
+                            + String.valueOf(++i)
+                            + ")"
+                            + oldname.substring(oldname.length() - 4);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+                doc = null;
+                fos = null;
+                ((MainActivity)context).alert("Error", e.getMessage());
+                return;
+            }
         }
 
+        Log.i(filename + " " + pagecount + " trunks");
         getLeafs();
     }
 

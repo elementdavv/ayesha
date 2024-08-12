@@ -5,11 +5,14 @@ for api >= 24(android 7.0), use the config
 for api < 24, use onReceivedSslError for WebView, use hathitrustSSLSocketFactory for HttpsURLConnection
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <base-config>
         <trust-anchors>
             <certificates src="@raw/isrg_root_x1" />
             <certificates src="@raw/isrg_root_x2" />
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">hathitrust.org</domain>
+    </domain-config>
 </network-security-config>
