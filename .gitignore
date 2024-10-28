@@ -27,3 +27,4 @@ app/gradle.properties
 **/.settings
 **/.classpath
 **/.project
+local.properties
