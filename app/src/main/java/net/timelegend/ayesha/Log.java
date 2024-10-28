@@ -1,21 +1,21 @@
 package net.timelegend.ayesha;
 
 public class Log {
-    private final static String TAG = "ayesha";
+    private final static String TAG = "Ayesha";
 
-    public static int i(String msg) {
-        return android.util.Log.i(TAG, msg);
+    public final static <T> void i(T v) {
+        android.util.Log.i(TAG, v.toString());
     }
 
-    public static int d(String msg) {
-        return android.util.Log.d(TAG, msg);
+    public final static <T> void d(T v) {
+        android.util.Log.d(TAG, v.toString());
     }
 
-    public static int e(String msg) {
-        return android.util.Log.e(TAG, msg);
+    public final static <T> void e(T v) {
+        android.util.Log.e(TAG, v.toString());
     }
 
-    public static int w(String msg) {
-        return android.util.Log.w(TAG, msg);
+    public final static <T> void w(T v) {
+        android.util.Log.w(TAG, v.toString());
     }
 }

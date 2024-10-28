@@ -20,7 +20,6 @@ allprojects {
 		} else {
 			maven { url "file://${System.properties['user.home']}/MAVEN" }
 		}
-		maven { url 'https://maven.ghostscript.com/' }
 		google()
 		mavenCentral()
 	}
