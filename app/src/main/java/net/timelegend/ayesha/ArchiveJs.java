@@ -34,12 +34,17 @@ public class ArchiveJs extends Js {
                 break;
             case 2:
                 if ("true".equals(value)) {
+                    job.setBookProtected(true);
                     timer.cancel();
                     runJs(3, "return window.br?.options?.lendingInfo?.loanId;");
                 }
                 else if ("false".equals(value)) {
+                    job.setBookProtected(false);
                     timer.cancel(); // not protected, quit
                     Log.i("book is always available, quit");
+                    Log.i("done");
+                    Log.i("load css");
+                    runJs2(11, "loadcss.js");
                 }
                 else if (++step >= stepLimit) {
                     timer.cancel();
@@ -65,7 +70,7 @@ public class ArchiveJs extends Js {
                     runJs2(12, "ia/loadbuttons.js");
                 }
                 else {
-                    Log.i("fail");
+                    Log.i("fail loading css");
                 }
                 break;
             case 12:
@@ -74,7 +79,7 @@ public class ArchiveJs extends Js {
                     runJs2(13, "ia/loadscales.js");
                 }
                 else {
-                    Log.i("fail");
+                    Log.i("fail loading buttons");
                 }
                 break;
             case 21:

@@ -37,8 +37,8 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 
-// import crl.android.pdfwriter.InvalidImageException;
-import crl.android.pdfwriter.PDFWriter;
+// import net.timelegend.pdf.crl.InvalidImageException;
+import net.timelegend.pdf.crl.PDFWriter;
 
 public abstract class Job {
     protected enum Status {READY, START, WAIT, COMPLETE, FAIL};
@@ -117,6 +117,8 @@ public abstract class Job {
         jobcount = new AtomicInteger();
     }
 
+    public void setBookProtected(boolean bookProtected) {}
+
     // called on every page loaded
     public void initReady() {
         readyNotify();
@@ -167,7 +169,6 @@ public abstract class Job {
                     == PackageManager.PERMISSION_GRANTED) {
                 begin2();
             } else {
-                int PERMISSION_REQUEST_CODE = 1;
                 ActivityCompat.requestPermissions(
                     (MainActivity) context
                     , new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}
@@ -208,6 +209,16 @@ public abstract class Job {
                 ((MainActivity)context).alert("Error", e.getMessage());
                 return;
             }
+        }
+
+        if (additionalSSLSocketFactory != null) {
+            HttpsURLConnection.setDefaultSSLSocketFactory(additionalSSLSocketFactory);
+            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+                @Override
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
         }
 
         Log.i(filename + " " + pagecount + " trunks");
@@ -373,17 +384,6 @@ public abstract class Job {
                     conn.setDoInput(true);
                     conn.setRequestProperty("cookie", cookies);
                     conn.setRequestProperty("Referer", referer);
-
-                    if (additionalSSLSocketFactory != null) {
-                        conn.setDefaultSSLSocketFactory(additionalSSLSocketFactory);
-                        conn.setDefaultHostnameVerifier(new HostnameVerifier() {
-                            @Override
-                            public boolean verify(String hostname, SSLSession session) {
-                                return true;
-                            }
-                        });
-                    }
-
                     conn.connect();
                     InputStream is = conn.getInputStream();
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();

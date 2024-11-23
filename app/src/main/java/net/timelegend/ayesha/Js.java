@@ -54,7 +54,7 @@ public abstract class Js {
                     Log.i("init complete");
                 }
                 else {
-                    Log.i("fail");
+                    Log.i("fail loading scales");
                 }
                 break;
             case 23:

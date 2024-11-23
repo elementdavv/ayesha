@@ -219,7 +219,6 @@ public class MyWebView extends WebView {
                 directDownload();
             }
             else {
-                int PERMISSION_REQUEST_CODE = 2;
                 ActivityCompat.requestPermissions(
                     (MainActivity) context
                     , new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}

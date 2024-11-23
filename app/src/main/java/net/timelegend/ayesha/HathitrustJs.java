@@ -47,7 +47,7 @@ public class HathitrustJs extends Js {
                     runJs2(12, "ht/loadbuttons.js");
                 }
                 else {
-                    Log.i("fail");
+                    Log.i("fail loading css");
                 }
                 break;
             case 12:
@@ -56,7 +56,7 @@ public class HathitrustJs extends Js {
                     runJs2(13, "ht/loadscales.js", "availableProcessors", String.valueOf(job.getAvailableProcessors()));
                 }
                 else {
-                    Log.i("fail");
+                    Log.i("fail loading buttons");
                 }
                 break;
             case 21:

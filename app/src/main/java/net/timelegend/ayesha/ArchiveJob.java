@@ -14,10 +14,16 @@ import org.json.JSONException;
 
 public class ArchiveJob extends Job {
     private JSONArray data;
+    private boolean bookProtected;
 
     public ArchiveJob(Context context, MyWebView v) {
         super(context, v);
         origin = Coordinator.archive;
+    }
+
+    @Override
+    public void setBookProtected(boolean bookProtected) {
+        this.bookProtected = bookProtected;
     }
 
     @Override
@@ -74,6 +80,11 @@ public class ArchiveJob extends Job {
 
     @Override
     protected void returnBook() {
+        if (!bookProtected) {
+            super.returnBook();
+            return;
+        }
+
         byte[] query = ("action=return_loan&identifier=" + fileId).getBytes();
 
         executor.execute(new Runnable() {
