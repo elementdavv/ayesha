@@ -1,5 +1,3 @@
-# This is a very simple Makefile that calls 'gradlew' to do the heavy lifting.
-
 default: debug
 
 debug:
@@ -24,11 +22,6 @@ lint:
 	./gradlew --warning-mode=all lint
 archive:
 	./gradlew --warning-mode=all publishReleasePublicationToLocalRepository
-sync: archive
-	rsync -av --chmod=g+w --chown=:gs-priv $(HOME)/MAVEN/com/ ghostscript.com:/var/www/maven.ghostscript.com/com/
-tarball: release
-	cp app/build/outputs/apk/release/app-universal-release.apk \
-		ayesha-$(shell git describe --tags).apk
 tasks:
 	./gradlew tasks
 clean:
