@@ -21,6 +21,7 @@ gradle-app.setting
 .classpath
 
 .settings/
+bin
 local.properties
 app/gradle.properties
 todo

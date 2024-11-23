@@ -206,7 +206,7 @@ public class MyWebView extends WebView {
                 String contentDisposition, String mimetype, long contentLength) {
 
             if (dm == null) {
-                dm = (DownloadManager) context.getSystemService(context.DOWNLOAD_SERVICE);
+                dm = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
             }
 
             rq = new DownloadManager.Request(Uri.parse(url));

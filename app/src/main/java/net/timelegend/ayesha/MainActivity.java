@@ -14,7 +14,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.RelativeLayout;
@@ -22,7 +21,6 @@ import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.widget.ContentLoadingProgressBar;
 
@@ -36,16 +34,12 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Timer;
 import java.util.TimerTask;
-
-// import android.content.pm.PackageInfo;
-// import crl.android.pdfwriter.PDFWriterDemo;
 
 public class MainActivity extends AppCompatActivity {
     // const
@@ -418,22 +412,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         else if (id == R.id.action_about) {
-            // PackageInfo pInfo = null;
-            // try {
-            //     pInfo = getPackageManager().getPackageInfo("com.android.chrome", 0);
-            // }
-            // catch (PackageManager.NameNotFoundException e) {
-            // }
-            // if (pInfo == null) {
-            //     show ("chrome not found");
-            // }
-            // else {
-            //     show ("chrome: " + pInfo.versionName);
-            // }
-
-            // Intent demo = new Intent(this, PDFWriterDemo.class);
-            // startActivity(demo);
-
             openAbout();
             return true;
         }

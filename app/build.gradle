@@ -70,3 +70,12 @@ android {
     //     targetCompatibility JavaVersion.VERSION_1_8
     // }
 }
+tasks.register("printCompileClasspath") {
+    doLast {
+        println("---START---")
+        configurations.getByName("debugCompileClasspath").files.forEach { file ->
+            println(file.absolutePath)
+        }
+        println("---END---")
+    }
+}

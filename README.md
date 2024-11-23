@@ -1,2 +1,2 @@
-# ayesha
-Internet Archive Downloader app on Android
+# Ayesha
+Internet Archive Downloader Android app.

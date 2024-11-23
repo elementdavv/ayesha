@@ -77,6 +77,7 @@ public abstract class Job {
     protected String cookies;
     protected SSLSocketFactory additionalSSLSocketFactory;
     protected File file;
+    protected FileOutputStream fos;
     protected PDFWriter doc;
     protected int tasks;
     protected ConcurrentLinkedQueue<JobInfo> jobs;
@@ -185,7 +186,6 @@ public abstract class Job {
     public void getFile() {
         String oldname = filename;
         int i = 0;
-        FileOutputStream fos = null;
 
         while (true) {
             try {
@@ -339,12 +339,14 @@ public abstract class Job {
             if (doc != null) {
                 try {
                     doc.end();
+                    fos.close();
                 }
                 catch (IOException e) {
                     e.printStackTrace();
                 }
                 finally {
                     doc = null;
+                    fos = null;
                 }
             }
         }
@@ -494,17 +496,17 @@ public abstract class Job {
     // for test purpose
     // private void saveToFile(byte[] src, String fn) {
     //     File f = new File(downloadPath, fn);
-    //     FileOutputStream fos = null;
+    //     FileOutputStream fos1 = null;
 
     //     try {
-    //         fos = new FileOutputStream(f);
-    //         fos.write(src);
+    //         fos1 = new FileOutputStream(f);
+    //         fos1.write(src);
     //     }
     //     catch (IOException e) {
     //         e.printStackTrace();
     //     }
     //     finally {
-    //         fos = null;
+    //         fos1 = null;
     //     }
     // }
 
