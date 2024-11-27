@@ -16,13 +16,9 @@ dependencies {
     else
         api 'net.timelegend.pdf:crl:0.1.0'
 }
-/*
-android 5.0 -> api 21
-android 7.0 -> api 24
-android 14  -> api 34
-*/
 android {
     compileSdkVersion 34
+    buildToolsVersion '34.0.0'
     defaultConfig {
         namespace 'net.timelegend.ayesha'
         minSdkVersion 21
